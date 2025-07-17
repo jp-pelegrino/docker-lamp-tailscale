@@ -55,15 +55,18 @@ else
 fi
 
 # Configure Tailscale serve based on privacy setting
+echo "Clearing any existing serve configuration..."
+tailscale serve reset
+
 if [ "$TS_PRIVACY" = "public" ]; then
     echo "Setting up public (funnel) access..."
     # Enable funnel for public access
     echo "Configuring Tailscale serve for HTTPS on port 443..."
-    tailscale serve --https=443 --set-path=/ http://localhost:8000
+    tailscale serve https:443 http://localhost:8000
     if [ $? -eq 0 ]; then
         echo "Tailscale serve configured successfully"
         echo "Enabling funnel for public access..."
-        tailscale funnel --https=443 on
+        tailscale funnel https:443 on
         if [ $? -eq 0 ]; then
             echo "Tailscale funnel enabled successfully"
         else
@@ -71,16 +74,31 @@ if [ "$TS_PRIVACY" = "public" ]; then
         fi
     else
         echo "ERROR: Failed to configure Tailscale serve"
+        echo "Attempting alternative serve configuration..."
+        tailscale serve 443 http://localhost:8000
+        if [ $? -eq 0 ]; then
+            echo "Alternative serve configuration successful"
+            tailscale funnel 443 on
+        else
+            echo "Alternative serve configuration also failed"
+        fi
     fi
 else
     echo "Setting up private (serve) access..."
     # Just serve without funnel for private access
     echo "Configuring Tailscale serve for HTTPS on port 443..."
-    tailscale serve --https=443 --set-path=/ http://localhost:8000
+    tailscale serve https:443 http://localhost:8000
     if [ $? -eq 0 ]; then
         echo "Tailscale serve configured successfully"
     else
         echo "ERROR: Failed to configure Tailscale serve"
+        echo "Attempting alternative serve configuration..."
+        tailscale serve 443 http://localhost:8000
+        if [ $? -eq 0 ]; then
+            echo "Alternative serve configuration successful"
+        else
+            echo "Alternative serve configuration also failed"
+        fi
     fi
 fi
 
