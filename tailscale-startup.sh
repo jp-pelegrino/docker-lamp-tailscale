@@ -28,7 +28,21 @@ echo "Setting up Tailscale serve..."
 # Since Tailscale serve only supports localhost/127.0.0.1, we need to use a different approach
 # We'll set up a simple proxy using socat to forward traffic from localhost to nginx
 echo "Installing socat and netcat for proxying..."
-apk add --no-cache socat netcat-openbsd
+
+# Check if packages are already installed
+if command -v socat >/dev/null 2>&1 && command -v nc >/dev/null 2>&1; then
+    echo "Packages already installed, skipping installation"
+else
+    if ! apk add --no-cache socat netcat-openbsd; then
+        echo "ERROR: Failed to install socat and netcat. Retrying..."
+        sleep 5
+        if ! apk add --no-cache socat netcat-openbsd; then
+            echo "ERROR: Failed to install packages after retry. Exiting."
+            exit 1
+        fi
+    fi
+    echo "Packages installed successfully"
+fi
 
 # Start socat in the background to proxy localhost:8000 to nginx:8000
 echo "Starting proxy from localhost:8000 to nginx:8000..."
@@ -62,33 +76,36 @@ if [ "$TS_PRIVACY" = "public" ]; then
     echo "Setting up public (funnel) access..."
     # Enable serve for HTTPS on port 443, serving localhost:8000
     echo "Configuring Tailscale serve for HTTPS on port 443..."
-    tailscale serve --https=443 --bg localhost:8000
-    if [ $? -eq 0 ]; then
+    if ! tailscale serve --https=443 --bg localhost:8000; then
+        echo "ERROR: Failed to configure Tailscale serve"
+        echo "Attempting to continue anyway..."
+    else
         echo "Tailscale serve configured successfully"
         echo "Enabling funnel for public access..."
-        tailscale funnel --https=443 on
-        if [ $? -eq 0 ]; then
-            echo "Tailscale funnel enabled successfully"
-        else
+        if ! tailscale funnel --https=443 on; then
             echo "ERROR: Failed to enable Tailscale funnel"
+            echo "Attempting to continue anyway..."
+        else
+            echo "Tailscale funnel enabled successfully"
         fi
-    else
-        echo "ERROR: Failed to configure Tailscale serve"
     fi
 else
     echo "Setting up private (serve) access..."
     # Just serve without funnel for private access
     echo "Configuring Tailscale serve for HTTPS on port 443..."
-    tailscale serve --https=443 --bg localhost:8000
-    if [ $? -eq 0 ]; then
-        echo "Tailscale serve configured successfully"
-    else
+    if ! tailscale serve --https=443 --bg localhost:8000; then
         echo "ERROR: Failed to configure Tailscale serve"
+        echo "Attempting to continue anyway..."
+    else
+        echo "Tailscale serve configured successfully"
     fi
 fi
 
 echo "Tailscale serve configuration complete!"
-tailscale serve status
+echo "Checking serve status..."
+if ! tailscale serve status; then
+    echo "WARNING: Unable to get serve status, but continuing..."
+fi
 
 echo "Keeping container running..."
 # Keep the container running
