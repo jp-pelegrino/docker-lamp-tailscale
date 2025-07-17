@@ -74,6 +74,11 @@ tailscale serve reset
 
 if [ "$TS_PRIVACY" = "public" ]; then
     echo "Setting up public (funnel) access..."
+    
+    # Clear any existing funnel configuration first
+    echo "Clearing existing funnel configuration..."
+    tailscale funnel --https=443 off 2>/dev/null || true
+    
     # Enable serve for HTTPS on port 443, serving localhost:8000
     echo "Configuring Tailscale serve for HTTPS on port 443..."
     if ! tailscale serve --https=443 --bg localhost:8000; then
@@ -82,11 +87,17 @@ if [ "$TS_PRIVACY" = "public" ]; then
     else
         echo "Tailscale serve configured successfully"
         echo "Enabling funnel for public access..."
+        
+        # Wait a moment for serve to stabilize
+        sleep 2
+        
         if ! tailscale funnel --https=443 on; then
             echo "ERROR: Failed to enable Tailscale funnel"
             echo "Attempting to continue anyway..."
+            echo "Site will be accessible only within your tailnet"
         else
             echo "Tailscale funnel enabled successfully"
+            echo "Site should be accessible publicly at: https://wvdoh.dorper-beta.ts.net/"
         fi
     fi
 else
@@ -105,6 +116,11 @@ echo "Tailscale serve configuration complete!"
 echo "Checking serve status..."
 if ! tailscale serve status; then
     echo "WARNING: Unable to get serve status, but continuing..."
+fi
+
+echo "Checking funnel status..."
+if ! tailscale funnel status; then
+    echo "WARNING: Unable to get funnel status, but continuing..."
 fi
 
 echo "Keeping container running..."
