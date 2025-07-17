@@ -3,7 +3,7 @@ services:
         image: mysql:8.0
         restart: unless-stopped
         ports: 
-            - "${MYSQL_PORT}:3306"
+            - "${MYSQL_PORT:-3306}:3306"
         command: --default-authentication-plugin=mysql_native_password
         environment:
             MYSQL_DATABASE: ${MYSQL_DATABASE}
@@ -13,14 +13,15 @@ services:
         volumes:
             - ./dump:/docker-entrypoint-initdb.d:ro
             - ./conf:/etc/mysql/conf.d:ro
-            - persistent:/var/lib/mysql
+            - mysql_data:/var/lib/mysql
         networks:
             - backend
         healthcheck:
             test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
-            interval: 10s
-            timeout: 5s
+            interval: 30s
+            timeout: 10s
             retries: 5
+            start_period: 30s
 
     www:
         build: 
@@ -52,41 +53,57 @@ services:
             retries: 5
 
     wordpress:
-        image: wordpress:6.8.1-php8.2-apache
+        image: wordpress:${WORDPRESS_VERSION:-6.8.1}-php${PHP_VERSION:-8.2}-apache
         restart: unless-stopped
         environment:
-            WORDPRESS_DB_HOST: ${MYSQL_HOST}:3306
+            WORDPRESS_DB_HOST: ${MYSQL_HOST:-db}:3306
             WORDPRESS_DB_NAME: ${MYSQL_DATABASE}
             WORDPRESS_DB_USER: ${MYSQL_USER}
             WORDPRESS_DB_PASSWORD: ${MYSQL_PASSWORD}
+            WORDPRESS_CONFIG_EXTRA: |
+                define('WP_HOME', 'https://${TS_HOSTNAME}.${TS_DOMAIN:-dorper-beta.ts.net}');
+                define('WP_SITEURL', 'https://${TS_HOSTNAME}.${TS_DOMAIN:-dorper-beta.ts.net}');
+                define('FORCE_SSL_ADMIN', true);
+                if (isset($$_SERVER['HTTP_X_FORWARDED_PROTO']) && $$_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') {
+                    $$_SERVER['HTTPS'] = 'on';
+                }
         volumes:
             - wordpress_data:/var/www/html
+            - ./uploads.ini:/usr/local/etc/php/conf.d/uploads.ini:ro
+            - ./php.ini:/usr/local/etc/php/conf.d/wordpress.ini:ro
+            - ./wordpress.htaccess:/var/www/html/.htaccess:ro
         depends_on:
-            - db
+            db:
+                condition: service_healthy
         networks:
             - backend
         healthcheck:
-            test: ["CMD", "curl", "-f", "http://localhost"]
-            interval: 10s
-            timeout: 5s
+            test: ["CMD", "curl", "-f", "http://localhost:80"]
+            interval: 30s
+            timeout: 10s
             retries: 5
+            start_period: 60s
 
     nginx:
         image: nginx:alpine
         restart: unless-stopped
         volumes:
             - ./nginx.conf:/etc/nginx/nginx.conf:ro
+            - ./proxy_params:/etc/nginx/proxy_params:ro
         depends_on:
-            - wordpress
-            - phpmyadmin
+            wordpress:
+                condition: service_healthy
+            phpmyadmin:
+                condition: service_healthy
         networks:
             - frontend
             - backend
         healthcheck:
             test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8000/health"]
-            interval: 10s
-            timeout: 5s
-            retries: 5
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 10s
 
     tailscale:
         image: tailscale/tailscale:latest
@@ -96,40 +113,66 @@ services:
             - TS_AUTHKEY=${TS_AUTHKEY}
             - TS_HOSTNAME=${TS_HOSTNAME}
             - TS_STATE_DIR=/var/lib/tailscale
-            - TS_PRIVACY=${TS_PRIVACY}
+            - TS_PRIVACY=${TS_PRIVACY:-public}
+            - TS_SERVE_MODE=${TS_SERVE_MODE:-serve}
+            - TS_PROXY_TARGET=http://nginx:8000
         volumes:
             - tailscale_data:/var/lib/tailscale
             - /dev/net/tun:/dev/net/tun
-            - ./tailscale-startup.sh:/tailscale-startup.sh:ro
         cap_add:
             - NET_ADMIN
             - SYS_MODULE
         depends_on:
-            - nginx
+            nginx:
+                condition: service_healthy
         networks:
             - frontend
-        command: sh /tailscale-startup.sh
+        command: >
+            sh -c "
+            echo 'Starting Tailscale daemon...'
+            tailscaled --state=/var/lib/tailscale/tailscaled.state --socket=/var/run/tailscale/tailscaled.sock &
+            sleep 5
+            echo 'Bringing up Tailscale interface...'
+            tailscale up --authkey=$${TS_AUTHKEY} --hostname=$${TS_HOSTNAME} --advertise-tags=tag:container
+            echo 'Installing required packages...'
+            apk add --no-cache socat netcat-openbsd
+            echo 'Setting up proxy for Docker networking...'
+            socat TCP-LISTEN:8000,fork,reuseaddr TCP:nginx:8000 &
+            echo 'Configuring Tailscale serve/funnel...'
+            if [ \"$${TS_SERVE_MODE}\" = \"funnel\" ]; then
+              tailscale funnel --https=443 --bg localhost:8000
+            else
+              tailscale serve --https=443 --bg localhost:8000
+            fi
+            echo 'Tailscale setup complete!'
+            wait
+            "
 
     phpmyadmin:
-        image: phpmyadmin/phpmyadmin:latest
+        image: phpmyadmin/phpmyadmin:${PHPMYADMIN_VERSION:-latest}
         restart: unless-stopped
         environment:
-            PMA_HOST: ${PMA_HOST}
-            PMA_USER: ${PMA_USER}
+            PMA_HOST: ${PMA_HOST:-db}
+            PMA_USER: ${PMA_USER:-root}
             PMA_PASSWORD: ${PMA_PASSWORD}
-            UPLOAD_LIMIT: ${PHP_UPLOAD_MAX_FILESIZE}
+            PMA_ABSOLUTE_URI: https://${TS_HOSTNAME}.${TS_DOMAIN:-dorper-beta.ts.net}/phpmyadmin/
+            UPLOAD_LIMIT: ${PHP_UPLOAD_MAX_FILESIZE:-1024M}
+            MEMORY_LIMIT: ${PHP_MEMORY_LIMIT:-512M}
+            MAX_EXECUTION_TIME: ${PHP_MAX_EXECUTION_TIME:-120}
         ports:
-            - "${PHPMYADMIN_PORT}:80"
+            - "${PHPMYADMIN_PORT:-8080}:80"
         depends_on:
-            - db
+            db:
+                condition: service_healthy
         networks:
             - frontend
             - backend
         healthcheck:
-            test: ["CMD", "curl", "-f", "http://localhost"]
-            interval: 10s
-            timeout: 5s
+            test: ["CMD", "curl", "-f", "http://localhost:80"]
+            interval: 30s
+            timeout: 10s
             retries: 5
+            start_period: 30s
 
 networks:
     frontend:
@@ -139,6 +182,9 @@ networks:
         internal: true
 
 volumes:
-    persistent:
+    mysql_data:
+        driver: local
     wordpress_data:
+        driver: local
     tailscale_data:
+        driver: local
