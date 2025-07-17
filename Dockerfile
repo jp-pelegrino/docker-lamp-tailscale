@@ -8,29 +8,36 @@ ARG PHP_POST_MAX_SIZE=20M
 # Use production PHP settings
 RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
 
-# Update and install dependencies
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
-        libpng-dev \
-        libzip-dev \
-        zlib1g-dev \
-        libonig-dev \
-        curl \
-        sendmail \
-    && rm -rf /var/lib/apt/lists/* \
+# Install build dependencies for ftp extension
+RUN apt-get update && apt-get install -y \
+    libssl-dev \
+    libcurl4-openssl-dev \
+    libz-dev \
+    libxml2-dev \
+    libpng-dev \
+    libzip-dev \
+    zlib1g-dev \
+    libonig-dev \
+    curl \
+    ftp \
+    sendmail \
     && docker-php-ext-install -j$(nproc) \
         mysqli \
         pdo \
         pdo_mysql \
         zip \
         mbstring \
-        gd
+        gd \
+        ftp \
+    && rm -rf /var/lib/apt/lists/*
 
 # Configure PHP
 RUN echo "memory_limit = ${PHP_MEMORY_LIMIT}" >> /usr/local/etc/php/conf.d/docker-php-memory-limit.ini \
     && echo "max_execution_time = ${PHP_MAX_EXECUTION_TIME}" >> /usr/local/etc/php/conf.d/docker-php-max-execution-time.ini \
     && echo "upload_max_filesize = ${PHP_UPLOAD_MAX_FILESIZE}" >> /usr/local/etc/php/conf.d/docker-php-upload-max-filesize.ini \
     && echo "post_max_size = ${PHP_POST_MAX_SIZE}" >> /usr/local/etc/php/conf.d/docker-php-post-max-size.ini
+
+RUN docker-php-ext-install ftp
 
 # Configure Apache
 RUN a2enmod rewrite headers ssl
