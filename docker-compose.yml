@@ -139,7 +139,7 @@ services:
             echo 'Setting up proxy for Docker networking...'
             socat TCP-LISTEN:8000,fork,reuseaddr TCP:nginx:8000 &
             echo 'Configuring Tailscale serve/funnel...'
-            if [ \"$${TS_SERVE_MODE}\" = \"funnel\" ]; then
+            if [ "$${TS_SERVE_MODE}" = "funnel" ]; then
               tailscale funnel --https=443 --bg localhost:8000
             else
               tailscale serve --https=443 --bg localhost:8000
