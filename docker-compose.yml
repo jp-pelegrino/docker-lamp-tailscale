@@ -127,22 +127,23 @@ services:
                 condition: service_healthy
         networks:
             - frontend
-        command: >
-            sh -c "
-            echo 'Starting Tailscale daemon...'
-            tailscaled --state=/var/lib/tailscale/tailscaled.state --socket=/var/run/tailscale/tailscaled.sock &
-            sleep 5
-            echo 'Bringing up Tailscale interface...'
-            tailscale up --authkey=$${TS_AUTHKEY} --hostname=$${TS_HOSTNAME} --advertise-tags=tag:container
-            echo 'Installing required packages...'
-            apk add --no-cache socat netcat-openbsd
-            echo 'Setting up proxy for Docker networking...'
-            socat TCP-LISTEN:8000,fork,reuseaddr TCP:nginx:8000 &
-            echo 'Configuring Tailscale serve...'
-            tailscale serve --https=443 --bg localhost:8000
-            echo 'Tailscale setup complete!'
-            wait
-            "
+        command:
+            - sh
+            - -c
+            - |
+                echo 'Starting Tailscale daemon...'
+                tailscaled --state=/var/lib/tailscale/tailscaled.state --socket=/var/run/tailscale/tailscaled.sock &
+                sleep 5
+                echo 'Bringing up Tailscale interface...'
+                tailscale up --authkey=$${TS_AUTHKEY} --hostname=$${TS_HOSTNAME} --advertise-tags=tag:container
+                echo 'Installing required packages...'
+                apk add --no-cache socat netcat-openbsd
+                echo 'Setting up proxy for Docker networking...'
+                socat TCP-LISTEN:8000,fork,reuseaddr TCP:nginx:8000 &
+                echo 'Configuring Tailscale serve...'
+                tailscale serve --https=443 --bg localhost:8000
+                echo 'Tailscale setup complete!'
+                wait
 
     phpmyadmin:
         image: phpmyadmin/phpmyadmin:${PHPMYADMIN_VERSION:-latest}
