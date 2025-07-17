@@ -25,16 +25,28 @@ sleep 5
 
 echo "Setting up Tailscale serve..."
 
+# Since Tailscale serve only supports localhost/127.0.0.1, we need to use a different approach
+# We'll set up a simple proxy using socat to forward traffic from localhost to nginx
+echo "Installing socat for proxying..."
+apk add --no-cache socat
+
+# Start socat in the background to proxy localhost:8000 to nginx:8000
+echo "Starting proxy from localhost:8000 to nginx:8000..."
+socat TCP-LISTEN:8000,fork,reuseaddr TCP:nginx:8000 &
+
+# Wait for socat to be ready
+sleep 2
+
 # Configure Tailscale serve based on privacy setting
 if [ "$TS_PRIVACY" = "public" ]; then
     echo "Setting up public (funnel) access..."
     # Enable funnel for public access
-    tailscale serve --https=443 --set-path=/ http://nginx:8000
+    tailscale serve --https=443 --set-path=/ http://localhost:8000
     tailscale funnel --https=443 on
 else
     echo "Setting up private (serve) access..."
     # Just serve without funnel for private access
-    tailscale serve --https=443 --set-path=/ http://nginx:8000
+    tailscale serve --https=443 --set-path=/ http://localhost:8000
 fi
 
 echo "Tailscale serve configuration complete!"
