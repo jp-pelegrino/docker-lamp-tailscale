@@ -13,7 +13,7 @@ sleep 5
 echo "Connecting to Tailscale..."
 
 # Connect to Tailscale
-until tailscale up --authkey="${TS_AUTHKEY}" --hostname="${TS_HOSTNAME}" --advertise-tags=tag:container; do
+until tailscale up --authkey="${TS_AUTHKEY}" --hostname="${TS_HOSTNAME}"; do
     echo "Retrying Tailscale connection..."
     sleep 5
 done
