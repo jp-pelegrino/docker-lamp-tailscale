@@ -135,7 +135,7 @@ services:
                 tailscaled --state=/var/lib/tailscale/tailscaled.state --socket=/var/run/tailscale/tailscaled.sock &
                 sleep 5
                 echo 'Bringing up Tailscale interface...'
-                tailscale up --authkey=$${TS_AUTHKEY} --hostname=$${TS_HOSTNAME} --advertise-tags=tag:container
+                tailscale up --authkey=$${TS_AUTHKEY} --hostname=$${TS_HOSTNAME}
                 echo 'Installing required packages...'
                 apk add --no-cache socat netcat-openbsd
                 echo 'Setting up proxy for Docker networking...'
