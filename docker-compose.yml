@@ -61,6 +61,7 @@ services:
             WORDPRESS_DB_PASSWORD: ${MYSQL_PASSWORD}
         volumes:
             - wordpress_data:/var/www/html
+            - ./config/php/uploads.ini:/usr/local/etc/php/conf.d/uploads.ini:ro
         depends_on:
             - db
         networks:
