@@ -1,4 +1,4 @@
-# WVCHD Docker Stack with Tailscale Serve/Funnel
+# Docker Stack with Tailscale Serve/Funnel
 
 This Docker stack provides a complete web development environment with:
 - **WordPress 6.8.1** (latest version)
@@ -7,6 +7,16 @@ This Docker stack provides a complete web development environment with:
 - **Nginx** reverse proxy
 - **Tailscale Serve/Funnel** for secure networking and public access
 - **Custom PHP application** (your existing www folder)
+
+## ✅ Current Status
+
+**WORKING CONFIGURATION** - All issues resolved as of July 18, 2025:
+- ✅ Container stability achieved (no more restart loops)
+- ✅ Tailscale funnel enabled for public internet access
+- ✅ WordPress accessible via Tailscale serve/funnel
+- ✅ phpMyAdmin accessible at `/phpmyadmin/` path
+- ✅ Nginx reverse proxy properly configured
+- ✅ Public internet access confirmed working
 
 ## 🚀 Quick Start
 
@@ -24,10 +34,12 @@ This Docker stack provides a complete web development environment with:
 
 ### 3. Configure Environment
 
-Edit the `.env` file and replace `<get-this-from-tailscale>` with your actual auth key:
+Edit the `.env` file with your settings:
 
 ```bash
 TS_AUTHKEY="tskey-auth-xxxxxxxxxxxxxxxxxxxxx"
+TS_HOSTNAME="your-hostname"
+TS_PRIVACY="public"  # Use "public" for internet access, "private" for tailnet-only
 ```
 
 ### 4. Start the Stack
@@ -42,12 +54,14 @@ docker-compose up -d
 
 ## 🌐 Access Your Applications
 
-### Private Access (default)
-- **WordPress**: `https://wvchd.<your-tailnet>.ts.net`
-- **Custom PHP App**: `https://wvchd.<your-tailnet>.ts.net` (you'll need to configure routing)
-- **phpMyAdmin**: `https://wvchd.<your-tailnet>.ts.net/phpmyadmin`
+### Private Access (TS_PRIVACY=private)
+- **WordPress**: `https://your-hostname.<your-tailnet>.ts.net`
+- **Custom PHP App**: `https://your-hostname.<your-tailnet>.ts.net` (you'll need to configure routing)
+- **phpMyAdmin**: `https://your-hostname.<your-tailnet>.ts.net/phpmyadmin`
 
-### Public Access (Funnel)
+### Public Internet Access (TS_PRIVACY=public)
+- **WordPress**: `https://your-hostname.your-tailnet.ts.net/` - Accessible from anywhere on the internet
+- **phpMyAdmin**: `https://your-hostname.your-tailnet.ts.net/phpmyadmin/` - Database management via web
 Change `TS_PRIVACY=public` in `.env` file, then restart:
 ```bash
 docker-compose down
@@ -171,13 +185,33 @@ docker-compose up -d
 ## 📊 phpMyAdmin Access
 
 Access phpMyAdmin for database management:
-- **URL**: `https://wvchd.<your-tailnet>.ts.net/phpmyadmin`
+- **URL**: `https://your-hostname.your-tailnet.ts.net/phpmyadmin/`
 - **Username**: `root`
-- **Password**: `dohwvchd2025root`
+- **Password**: Use the value from `MYSQL_ROOT_PASSWORD` in your `.env` file
 
 ## 🔧 Troubleshooting
 
-### Services won't start
+### Container Restart Loop Issues (RESOLVED)
+If you encounter "flag provided but not defined: -config-file" errors:
+- ✅ **Fixed**: Removed invalid `--config-file` flag from Tailscale startup
+- ✅ **Fixed**: Added `--reset` flag to clear persistent state
+- ✅ **Fixed**: Removed problematic `--advertise-tags=tag:container`
+
+### Nginx Proxy Issues (RESOLVED)
+If WordPress shows phpMyAdmin content instead:
+- ✅ **Fixed**: Removed conflicting default nginx configuration
+- ✅ **Fixed**: Proper path routing for `/phpmyadmin/` requests
+- ✅ **Fixed**: Cookie path rewriting for phpMyAdmin
+
+### Tailscale Funnel "tailnet only" Status (RESOLVED)
+If funnel shows "tailnet only" instead of "Funnel on":
+- ✅ **Fixed**: Separated serve and funnel configuration logic
+- ✅ **Fixed**: Direct funnel configuration when `TS_PRIVACY=public`
+- ✅ **Fixed**: Proper retry logic with fallback mechanisms
+
+### General Troubleshooting
+
+#### Services won't start
 ```bash
 # Check logs
 docker-compose logs
@@ -186,7 +220,7 @@ docker-compose logs
 sudo netstat -tulpn | grep :80
 ```
 
-### Tailscale connection issues
+#### Tailscale connection issues
 ```bash
 # Check Tailscale container logs
 docker-compose logs tailscale
@@ -195,17 +229,31 @@ docker-compose logs tailscale
 grep TS_AUTHKEY .env
 ```
 
-### Can't access via Tailscale URL
+#### Can't access via Tailscale URL
 1. Ensure you're connected to the same Tailscale network
 2. Check if the hostname is registered: `tailscale status`
-3. Verify serve configuration: `docker-compose exec tailscale tailscale serve status`
+3. Verify serve/funnel configuration: `docker-compose exec tailscale tailscale serve status`
 
-## 📝 Notes
+## 📝 Configuration Notes
 
+### Environment Variables
+- **TS_PRIVACY**: Set to `"public"` for internet access via Tailscale funnel, or `"private"` for tailnet-only access
+- **TS_HOSTNAME**: Choose a unique hostname for your Tailscale node
+- **TS_AUTHKEY**: Get from https://login.tailscale.com/admin/settings/keys
+
+### Technical Details
 - The setup uses **userspace networking** for Tailscale, which works in most Docker environments
 - **Ephemeral auth keys** are recommended for testing - they auto-cleanup when containers stop
 - **WordPress data** is persisted in Docker volumes
 - **Database data** is persisted in Docker volumes
+- **Nginx** acts as reverse proxy routing traffic to appropriate backend services
+- **socat** proxy handles Tailscale's localhost limitation in Docker containers
+
+### Security Considerations
+- Change all default passwords in production
+- Use strong, unique passwords for database access
+- Consider using Tailscale ACLs to restrict access
+- Regularly update Docker images for security patches
 - The **nginx proxy** handles SSL termination and routing
 
 ## 🎉 What's Next?
