@@ -79,37 +79,29 @@ if [ "$TS_PRIVACY" = "public" ]; then
     echo "Clearing existing funnel configuration..."
     tailscale funnel --https=443 off 2>/dev/null || true
     
-    # Enable serve for HTTPS on port 443, serving localhost:8000
-    echo "Configuring Tailscale serve for HTTPS on port 443..."
-    if ! tailscale serve --https=443 --bg localhost:8000; then
-        echo "ERROR: Failed to configure Tailscale serve"
-        echo "Attempting to continue anyway..."
-    else
-        echo "Tailscale serve configured successfully"
-        echo "Enabling funnel for public access..."
-        
-        # Wait a moment for serve to stabilize
-        sleep 2
-        
-        # Try to enable funnel multiple times if needed
-        echo "Attempting to enable funnel..."
-        for i in {1..3}; do
-            if tailscale funnel --https=443 on; then
-                echo "Tailscale funnel enabled successfully on attempt $i"
-                echo "Site should be accessible publicly at: https://wvdoh.dorper-beta.ts.net/"
-                break
-            else
-                echo "Funnel enable attempt $i failed, trying again..."
-                # Clear and retry
-                tailscale funnel --https=443 off 2>/dev/null || true
-                sleep 2
-                if [ $i -eq 3 ]; then
-                    echo "ERROR: Failed to enable Tailscale funnel after 3 attempts"
-                    echo "Site will be accessible only within your tailnet"
-                fi
+    # For public access, configure funnel directly (which includes serve)
+    echo "Configuring Tailscale funnel for public HTTPS access on port 443..."
+    
+    # Try to enable funnel multiple times if needed
+    echo "Attempting to enable funnel..."
+    for attempt in 1 2 3; do
+        if tailscale funnel --https=443 --bg localhost:8000; then
+            echo "Tailscale funnel enabled successfully on attempt $attempt"
+            echo "Site should be accessible publicly at: https://wvdoh.dorper-beta.ts.net/"
+            break
+        else
+            echo "Funnel enable attempt $attempt failed, trying again..."
+            # Clear and retry
+            tailscale funnel --https=443 off 2>/dev/null || true
+            sleep 2
+            if [ $attempt -eq 3 ]; then
+                echo "ERROR: Failed to enable Tailscale funnel after 3 attempts"
+                echo "Falling back to serve-only mode (tailnet access only)"
+                # Fallback to serve mode
+                tailscale serve --https=443 --bg localhost:8000 || echo "Serve fallback also failed"
             fi
-        done
-    fi
+        fi
+    done
 else
     echo "Setting up private (serve) access..."
     # Just serve without funnel for private access
