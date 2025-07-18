@@ -118,9 +118,10 @@ services:
         environment:
             PMA_HOST: ${PMA_HOST}
             PMA_ARBITRARY: 1
-            PMA_ABSOLUTE_URI: https://${TS_HOSTNAME}.${TS_TAILNET:-your-tailnet}.ts.net/phpmyadmin/
             UPLOAD_LIMIT: ${PHP_UPLOAD_MAX_FILESIZE}
             # Remove PMA_USER and PMA_PASSWORD to enable login prompt
+        volumes:
+            - ./config/phpmyadmin/config.user.inc.php:/etc/phpmyadmin/config.user.inc.php:ro
         ports:
             - "${PHPMYADMIN_PORT}:80"
         depends_on:
