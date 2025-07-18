@@ -65,6 +65,7 @@ services:
         depends_on:
             - db
         networks:
+            - frontend
             - backend
         healthcheck:
             test: ["CMD", "curl", "-f", "http://localhost"]
