@@ -91,14 +91,24 @@ if [ "$TS_PRIVACY" = "public" ]; then
         # Wait a moment for serve to stabilize
         sleep 2
         
-        if ! tailscale funnel --https=443 on; then
-            echo "ERROR: Failed to enable Tailscale funnel"
-            echo "Attempting to continue anyway..."
-            echo "Site will be accessible only within your tailnet"
-        else
-            echo "Tailscale funnel enabled successfully"
-            echo "Site should be accessible publicly at: https://wvdoh.dorper-beta.ts.net/"
-        fi
+        # Try to enable funnel multiple times if needed
+        echo "Attempting to enable funnel..."
+        for i in {1..3}; do
+            if tailscale funnel --https=443 on; then
+                echo "Tailscale funnel enabled successfully on attempt $i"
+                echo "Site should be accessible publicly at: https://wvdoh.dorper-beta.ts.net/"
+                break
+            else
+                echo "Funnel enable attempt $i failed, trying again..."
+                # Clear and retry
+                tailscale funnel --https=443 off 2>/dev/null || true
+                sleep 2
+                if [ $i -eq 3 ]; then
+                    echo "ERROR: Failed to enable Tailscale funnel after 3 attempts"
+                    echo "Site will be accessible only within your tailnet"
+                fi
+            fi
+        done
     fi
 else
     echo "Setting up private (serve) access..."
