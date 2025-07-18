@@ -18,13 +18,20 @@ $cfg['CookieHttpOnly'] = true;
 $cfg['CookieSameSite'] = 'Lax';
 $cfg['LoginCookieValidity'] = 28800; // 8 hours
 
+/* Session settings for reverse proxy */
+$cfg['SessionSavePath'] = '';
+
 /* Disable version check */
 $cfg['VersionCheck'] = false;
 
-/* Handle reverse proxy setup */
+/* Handle reverse proxy setup - must be before any redirects */
 if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') {
     $_SERVER['HTTPS'] = 'on';
+    $_SERVER['SERVER_PORT'] = '443';
 }
 
-/* Set the base path for phpMyAdmin when accessed via /phpmyadmin/ */
-$cfg['PmaAbsoluteUri'] = '';
+/* Force HTTPS URLs in phpMyAdmin */
+$cfg['ForceSSL'] = true;
+
+/* Set the absolute URI for phpMyAdmin to handle reverse proxy properly */
+$cfg['PmaAbsoluteUri'] = 'https://wvdoh.dorper-beta.ts.net/phpmyadmin/';
