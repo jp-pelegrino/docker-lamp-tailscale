@@ -184,10 +184,27 @@ docker-compose up -d
 
 ## 📊 phpMyAdmin Access
 
-Access phpMyAdmin for database management:
-- **URL**: `https://your-hostname.your-tailnet.ts.net/phpmyadmin/`
-- **Username**: `root`
-- **Password**: Use the value from `MYSQL_ROOT_PASSWORD` in your `.env` file
+⚠️ **Known Issue with phpMyAdmin Security Configuration**
+
+**Current Status**: phpMyAdmin is accessible but experiencing session cookie issues when login security is enabled due to reverse proxy HTTPS detection problems.
+
+**Workaround Options**:
+
+1. **Direct Access** (Recommended for development):
+   - Access phpMyAdmin directly: `http://localhost:8080` (when running locally)
+   - **Username**: `root`
+   - **Password**: Use the value from `MYSQL_ROOT_PASSWORD` in your `.env` file
+
+2. **Via Tailscale** (Login issues may occur):
+   - **URL**: `https://your-hostname.your-tailnet.ts.net/phpmyadmin/`
+   - **Username**: `root`  
+   - **Password**: Use the value from `MYSQL_ROOT_PASSWORD` in your `.env` file
+   - **Note**: May show "Failed to set session cookie" errors due to reverse proxy HTTPS detection issues
+
+3. **Alternative Database Management**:
+   - Use MySQL command line: `docker-compose exec db mysql -u root -p`
+   - Use database clients like MySQL Workbench, DBeaver, or phpStorm database tools
+   - Connect directly to `localhost:3306` when containers are running
 
 ## 🔧 Troubleshooting
 
@@ -208,6 +225,16 @@ If funnel shows "tailnet only" instead of "Funnel on":
 - ✅ **Fixed**: Separated serve and funnel configuration logic
 - ✅ **Fixed**: Direct funnel configuration when `TS_PRIVACY=public`
 - ✅ **Fixed**: Proper retry logic with fallback mechanisms
+
+### phpMyAdmin Session Cookie Issues (KNOWN ISSUE)
+If you see "Failed to set session cookie" or "HTTPS mismatch" errors:
+- **Root Cause**: phpMyAdmin has difficulty detecting HTTPS in reverse proxy setups
+- **Impact**: Login security prompts may not work properly via Tailscale URL
+- **Workarounds**:
+  - Use direct access: `http://localhost:8080` 
+  - Use MySQL command line: `docker-compose exec db mysql -u root -p`
+  - Use external database clients connecting to `localhost:3306`
+- **Status**: This is a known limitation of phpMyAdmin with reverse proxies
 
 ### General Troubleshooting
 
