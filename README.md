@@ -74,13 +74,13 @@ docker-compose up -d
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `COMPOSE_PROJECT_NAME` | Docker project name | `wvchd_tailscale` |
+| `COMPOSE_PROJECT_NAME` | Docker project name | `your_project_tailscale` |
 | `TS_AUTHKEY` | Tailscale authentication key | `<get-this-from-tailscale>` |
-| `TS_HOSTNAME` | Tailscale hostname | `wvchd` |
+| `TS_HOSTNAME` | Tailscale hostname | `your-hostname` |
 | `TS_PRIVACY` | Access level: `private` or `public` | `private` |
-| `MYSQL_DATABASE` | Database name | `dohwvchdwp` |
-| `MYSQL_USER` | Database user | `wvchdroot` |
-| `MYSQL_PASSWORD` | Database password | `dohwvchd2025admin` |
+| `MYSQL_DATABASE` | Database name | `dbname` |
+| `MYSQL_USER` | Database user | `dbuser` |
+| `MYSQL_PASSWORD` | Database password | `your_secure_password_here` |
 
 ### Services
 
