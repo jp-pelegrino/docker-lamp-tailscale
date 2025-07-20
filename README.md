@@ -10,12 +10,14 @@ This Docker stack provides a complete web development environment with:
 
 ## ✅ Current Status
 
-**WORKING CONFIGURATION** - All issues resolved as of July 18, 2025:
+**WORKING CONFIGURATION** - All issues resolved as of July 20, 2025:
 - ✅ Container stability achieved (no more restart loops)
 - ✅ Tailscale funnel enabled for public internet access
 - ✅ WordPress accessible via Tailscale serve/funnel
+- ✅ WordPress permalinks and URL routing working (pages, posts, categories)
 - ✅ phpMyAdmin accessible at `/phpmyadmin/` path
 - ✅ Nginx reverse proxy properly configured
+- ✅ Large file uploads working (1024M limit)
 - ✅ Public internet access confirmed working
 
 ## 🚀 Quick Start
@@ -103,6 +105,12 @@ docker-compose up -d
 ├── nginx.conf                  # Nginx configuration
 ├── start.sh                    # Helper startup script
 ├── config/
+│   ├── php/
+│   │   └── uploads.ini          # PHP upload configuration
+│   ├── phpmyadmin/
+│   │   └── config.user.inc.php  # phpMyAdmin reverse proxy config
+│   ├── wordpress/
+│   │   └── .htaccess            # WordPress permalink rewrite rules
 │   └── tailscale/
 │       ├── tailscale-private.json   # Private network config
 │       └── tailscale-public.json    # Public network config
@@ -225,6 +233,29 @@ If funnel shows "tailnet only" instead of "Funnel on":
 - ✅ **Fixed**: Separated serve and funnel configuration logic
 - ✅ **Fixed**: Direct funnel configuration when `TS_PRIVACY=public`
 - ✅ **Fixed**: Proper retry logic with fallback mechanisms
+
+### WordPress Permalink/URL Issues (RESOLVED & AUTOMATED)
+If WordPress pages/posts show "Not Found" errors while home and admin work:
+- ✅ **Fixed**: Created proper `.htaccess` file with WordPress rewrite rules
+- ✅ **Automated**: `.htaccess` file now automatically mounted from `config/wordpress/.htaccess`
+- **Root Cause**: WordPress needs `.htaccess` file for pretty permalinks to work
+- **Automation**: The `.htaccess` file is now part of the project and automatically applied
+- **Manual fix** (if needed): 
+  ```bash
+  docker-compose exec wordpress bash -c 'cat > /var/www/html/.htaccess << "EOF"
+  # BEGIN WordPress
+  <IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+  RewriteBase /
+  RewriteRule ^index\.php$ - [L]
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule . /index.php [L]
+  </IfModule>
+  # END WordPress
+  EOF'
+  ```
 
 ### phpMyAdmin Session Cookie Issues (KNOWN ISSUE)
 If you see "Failed to set session cookie" or "HTTPS mismatch" errors:

@@ -71,6 +71,8 @@ docker-compose logs --tail=20
 echo ""
 echo "🎉 Setup complete!"
 echo ""
+echo "✅ WordPress .htaccess file automatically configured for permalinks"
+echo ""
 echo "📱 Access your application:"
 if [ "$TS_PRIVACY" = "private" ]; then
     echo "   Private URL: https://$TS_HOSTNAME.<your-tailnet>.ts.net"

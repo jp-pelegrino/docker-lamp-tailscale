@@ -62,6 +62,8 @@ services:
         volumes:
             - wordpress_data:/var/www/html
             - ./config/php/uploads.ini:/usr/local/etc/php/conf.d/uploads.ini:ro
+            - ./config/wordpress/.htaccess:/var/www/html/.htaccess:ro
+            - ./wordpress-init.sh:/usr/local/bin/wordpress-init.sh:ro
         depends_on:
             - db
         networks:
