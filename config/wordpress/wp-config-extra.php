@@ -40,34 +40,4 @@ if (isset($_SERVER['HTTP_HOST'])) {
         define('WP_SITEURL', $protocol . $domain);
     }
 }
-
-// Fix for WordPress Customizer preview iframe
-add_action('init', function() {
-    if (is_customize_preview()) {
-        // Ensure the customizer preview uses HTTPS
-        add_filter('home_url', function($url) {
-            return str_replace('http://', 'https://', $url);
-        });
-        
-        add_filter('site_url', function($url) {
-            return str_replace('http://', 'https://', $url);
-        });
-    }
-});
-
-// Hook to fix URLs in WordPress admin and customizer
-add_action('admin_init', function() {
-    // Force HTTPS for all admin URLs
-    add_filter('admin_url', function($url) {
-        return str_replace('http://', 'https://', $url);
-    });
-    
-    add_filter('home_url', function($url) {
-        return str_replace('http://', 'https://', $url);
-    });
-    
-    add_filter('site_url', function($url) {
-        return str_replace('http://', 'https://', $url);
-    });
-});
 ?>
