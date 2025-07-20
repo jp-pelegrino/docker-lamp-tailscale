@@ -59,10 +59,13 @@ services:
             WORDPRESS_DB_NAME: ${MYSQL_DATABASE}
             WORDPRESS_DB_USER: ${MYSQL_USER}
             WORDPRESS_DB_PASSWORD: ${MYSQL_PASSWORD}
+            WORDPRESS_CONFIG_EXTRA: |
+                require_once(ABSPATH . 'wp-config-extra.php');
         volumes:
             - wordpress_data:/var/www/html
             - ./config/php/uploads.ini:/usr/local/etc/php/conf.d/uploads.ini:ro
             - ./config/wordpress/.htaccess:/var/www/html/.htaccess:ro
+            - ./config/wordpress/wp-config-extra.php:/var/www/html/wp-config-extra.php:ro
             - ./wordpress-init.sh:/usr/local/bin/wordpress-init.sh:ro
         depends_on:
             - db
